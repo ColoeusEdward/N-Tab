@@ -21,6 +21,9 @@ let githubIntervalId;
 let giteeIntervalId;
 let isLock = false;
 
+const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time));
+
+
 // 监听插件状态变化的事件
 chrome.runtime.onInstalled.addListener(function (details) {
     if (details.reason === 'install') {
@@ -35,32 +38,32 @@ chrome.runtime.onInstalled.addListener(function (details) {
 });
 
 // 获取tab数量并在popup上显示
-chrome.tabs.query({currentWindow: true}, function (tab) {
-    chrome.action.setBadgeText({text: tab.length + ""});
-    chrome.action.setBadgeBackgroundColor({color: "#0038a8"});
+chrome.tabs.query({ currentWindow: true }, function (tab) {
+    chrome.action.setBadgeText({ text: tab.length + "" });
+    chrome.action.setBadgeBackgroundColor({ color: "#0038a8" });
 });
 
 // 持续监听，当tab被激活的时候刷新一下pop上badge的tab的数量
 chrome.tabs.onActivated.addListener(function callback() {
     chrome.tabs.query({}, function (tab) {
-        chrome.action.setBadgeText({text: tab.length + ""});
-        chrome.action.setBadgeBackgroundColor({color: "#0038a8"});
+        chrome.action.setBadgeText({ text: tab.length + "" });
+        chrome.action.setBadgeBackgroundColor({ color: "#0038a8" });
     });
 });
 
 // 持续监听，当tab被关闭的时候刷新一下pop上badge的tab的数量
 chrome.tabs.onRemoved.addListener(function callback() {
     chrome.tabs.query({}, function (tab) {
-        chrome.action.setBadgeText({text: tab.length + ""});
-        chrome.action.setBadgeBackgroundColor({color: "#0038a8"});
+        chrome.action.setBadgeText({ text: tab.length + "" });
+        chrome.action.setBadgeBackgroundColor({ color: "#0038a8" });
     });
 });
 
 // 持续监听，当tab被创建的时候刷新一下pop上badge的tab的数量
 chrome.tabs.onCreated.addListener(function callback() {
     chrome.tabs.query({}, function (tab) {
-        chrome.action.setBadgeText({text: tab.length + ""});
-        chrome.action.setBadgeBackgroundColor({color: "#0038a8"});
+        chrome.action.setBadgeText({ text: tab.length + "" });
+        chrome.action.setBadgeBackgroundColor({ color: "#0038a8" });
     });
 });
 
@@ -75,10 +78,10 @@ chrome.storage.sync.get(function (storage) {
 });
 
 // 创建定时同步gitee任务，至于是否真的同步，要看设置
-chrome.alarms.create("checkAutoSyncGitee", {delayInMinutes: 70, periodInMinutes: 70});
+chrome.alarms.create("checkAutoSyncGitee", { delayInMinutes: 70, periodInMinutes: 70 });
 
 // 创建定时同步github任务，至于是否真的同步，要看设置
-chrome.alarms.create("checkAutoSyncGithub", {delayInMinutes: 90, periodInMinutes: 90});
+chrome.alarms.create("checkAutoSyncGithub", { delayInMinutes: 90, periodInMinutes: 90 });
 
 // 检查是否同步github的gist
 function checkAutoSyncGithub() {
@@ -238,20 +241,25 @@ function isStoredGithubTokenLocal(action) {
 
 // 判断是否已经保存gitee的Token
 function isStoredGiteeTokenLocal(action) {
-    console.log("是否已经保存gitee的Token")
-    handleGiteeGistLog.push(`${chrome.i18n.getMessage("startCheckGiteeTokenSaved")}`);
-    chrome.storage.local.get("giteeGistToken", function (storage) {
-        if (storage.giteeGistToken) {
-            console.log("已经保存gitee的Token")
-            handleGiteeGistLog.push(`${chrome.i18n.getMessage("giteeTokenSaved")}`);
-            giteeGistToken = storage.giteeGistToken;
-            isStoredGiteeGistIdLocal(action);
-        } else {
-            console.log("没有保存gitee的Token")
-            handleGiteeGistLog.push(`${chrome.i18n.getMessage("giteeTokenNoSaved")}`);
-            pushToGiteeGistStatus = undefined;
-        }
-    });
+    return new Promise((resolve) => {
+        console.log("是否已经保存gitee的Token")
+        handleGiteeGistLog.push(`${chrome.i18n.getMessage("startCheckGiteeTokenSaved")}`);
+        chrome.storage.local.get("giteeGistToken", function (storage) {
+            if (storage.giteeGistToken) {
+                console.log("已经保存gitee的Token")
+                handleGiteeGistLog.push(`${chrome.i18n.getMessage("giteeTokenSaved")}`);
+                giteeGistToken = storage.giteeGistToken;
+                isStoredGiteeGistIdLocal(action).then((res) => {
+                    resolve(res);
+                });
+            } else {
+                console.log("没有保存gitee的Token")
+                handleGiteeGistLog.push(`${chrome.i18n.getMessage("giteeTokenNoSaved")}`);
+                pushToGiteeGistStatus = undefined;
+            }
+        });
+    })
+
 }
 
 // 判断是否已经保存了github的gistId
@@ -282,28 +290,96 @@ function isStoredGithubGistIdLocal(action) {
 
 // 判断是否已经保存了gitee的gistId
 function isStoredGiteeGistIdLocal(action) {
-    console.log("是否已经保存了gitee的gistId")
-    handleGiteeGistLog.push(`${chrome.i18n.getMessage("startCheckGistIdSaved")}`)
-    chrome.storage.local.get("giteeGistId", function (storage) {
-        if (storage.giteeGistId) {
-            console.log("已经保存了gitee的gistId")
-            handleGiteeGistLog.push(`${chrome.i18n.getMessage("gistIdSaved")}`)
-            giteeGistId = storage.giteeGistId;
-            if (action === "push_gitee") {
-                getShardings(function (callback) {
-                    if (!callback || typeof callback == 'undefined') {
-                        updateGiteeGist([]);
-                    } else {
-                        updateGiteeGist(callback);
-                    }
-                })
+    return new Promise((resolve) => {
+        console.log("是否已经保存了gitee的gistId")
+        handleGiteeGistLog.push(`${chrome.i18n.getMessage("startCheckGistIdSaved")}`)
+        chrome.storage.local.get("giteeGistId", function (storage) {
+            if (storage.giteeGistId) {
+                console.log("已经保存了gitee的gistId")
+                handleGiteeGistLog.push(`${chrome.i18n.getMessage("gistIdSaved")}`)
+                giteeGistId = storage.giteeGistId;
+                if (action === "push_gitee") {
+                    getShardings(function (callback) {
+                        console.log("🚀 ~getShardings callback:", callback)
+                        if (!callback || typeof callback == 'undefined') {
+                            updateGiteeGist([]);
+                        } else {
+                            updateGiteeGist(callback);
+                        }
+                    })
+                } else if (action === "pull_gitee") {
+                    getGiteeGistById().then((res) => {
+                        resolve(res)
+                    });
+                }
+            } else {
+                console.log("没有保存了gitee的gistId")
+                handleGiteeGistLog.push(`${chrome.i18n.getMessage("gistIdNoSaved")}`)
+                pushToGiteeGistStatus = undefined;
             }
-        } else {
-            console.log("没有保存了gitee的gistId")
-            handleGiteeGistLog.push(`${chrome.i18n.getMessage("gistIdNoSaved")}`)
-            pushToGiteeGistStatus = undefined;
-        }
-    });
+        });
+
+    })
+
+}
+
+// 通过gistId获取gitee gist
+function getGiteeGistById() {
+    console.log("根据gistId拉取gist");
+    return new Promise((resolve) => {
+
+        let myHeaders = new Headers();
+        myHeaders.append("Authorization", "token " + giteeGistToken)
+        myHeaders.append("Accept", 'application/json')
+        // myHeaders.append("Content-Type", "application/json");
+        let requestOptions = {
+            method: 'GET', headers: myHeaders
+            // body: JSON.stringify(data),
+        };
+
+        fetch(giteeApiUrl + "/gists/" + giteeGistId, requestOptions).then((res) => {
+            return res.json()
+
+
+            // if (status === "success") {
+
+            //     // handleGistLog.push(`${chrome.i18n.getMessage("pullSuccess")}`)
+            // } else {
+            //     alert("根据gistId拉取gist失败了");
+            //     // handleGistLog.push(`${chrome.i18n.getMessage("pullFailed")}`)
+            // }
+        }).then((data) => {
+            // console.log("🚀 ~ fetch ~ data:", data)
+            let content = data.files['brower_Tabs.json'].content
+            let _content = JSON.parse(content)
+            // console.log("🚀 ~ getGiteeGistById ~ _content:", _content)
+            saveShardings(_content.tabGroups, "object");
+            saveShardings(_content.delTabGroups, "del");
+            console.log("后台拉取完成gist");
+            resolve(_content)
+        })
+
+        // let $ = getJq()
+        // $.ajax({
+        //     type: "GET",
+        //     headers: { "Authorization": "token " + giteeGistToken },
+        //     url: giteeApiUrl + "/gists/" + giteeGistId,
+        //     success: function (data, status) {
+
+        //     },
+        //     error: function (xhr, errorText, errorType) {
+        //         alert("根据gistId拉取gist报错了");
+        //         // handleGistLog.push(`${chrome.i18n.getMessage("pullFailed")}-->${xhr.responseText}`)
+        //     },
+        //     complete: function () {
+        //         //do something
+        //         // pullFromGiteeGistStatus = undefined;
+        //     }
+        // })
+    })
+    // handleGistLog.push(`${chrome.i18n.getMessage("getGiteeGistById")}`)
+    // pullFromGiteeGistStatus = `${chrome.i18n.getMessage("getGiteeGistById")}`;
+
 }
 
 // 更新github的gist
@@ -313,7 +389,7 @@ function updateGithubGist(content) {
     let _content = JSON.stringify(content);
     let data = {
         "description": "myCloudSkyMonster", "public": false, "files": {
-            "brower_Tabs.json": {"content": _content}
+            "brower_Tabs.json": { "content": _content }
         }
     }
     let myHeaders = new Headers();
@@ -352,7 +428,7 @@ function updateGiteeGist(content) {
     let _content = JSON.stringify(content);
     let data = {
         "description": "myCloudSkyMonster", "public": false, "files": {
-            "brower_Tabs.json": {"content": _content}
+            "brower_Tabs.json": { "content": _content }
         }
     }
     let myHeaders = new Headers();
@@ -364,7 +440,7 @@ function updateGiteeGist(content) {
 
     fetch(giteeApiUrl + "/gists/" + giteeGistId, requestOptions)
         .then(response => {
-            console.log(response)
+            // console.log(response)
             if (response.status === 200) {
                 console.log("更新成功")
                 console.log(response.json())
@@ -387,7 +463,7 @@ function updateGiteeGist(content) {
 
 // 构造操作gist的日志结构
 function setHandleGistLog(type, handleGistLog) {
-    let handleGistLogMap = {id: genObjectId(), handleGistType: type, handleGistLogs: handleGistLog};
+    let handleGistLogMap = { id: genObjectId(), handleGistType: type, handleGistLogs: handleGistLog };
     chrome.storage.local.get(null, function (storage) {
         if (storage.gistLog) {
             console.log("gistLog有值");
@@ -395,15 +471,15 @@ function setHandleGistLog(type, handleGistLog) {
                 let newArr = storage.gistLog;
                 newArr.splice(-1, 1)
                 newArr.unshift(handleGistLogMap);
-                chrome.storage.local.set({gistLog: newArr});
+                chrome.storage.local.set({ gistLog: newArr });
             } else {
                 let newArr = storage.gistLog;
                 newArr.unshift(handleGistLogMap);
-                chrome.storage.local.set({gistLog: newArr});
+                chrome.storage.local.set({ gistLog: newArr });
             }
         } else {
             console.log("gistLog没有值，第一次");
-            chrome.storage.local.set({gistLog: [handleGistLogMap]});
+            chrome.storage.local.set({ gistLog: [handleGistLogMap] });
         }
     });
 }
@@ -411,8 +487,8 @@ function setHandleGistLog(type, handleGistLog) {
 // 操作gist的全局状态，1分钟自动解锁，防止死锁
 function setHandleGistStatus(status) {
     let expireTime = moment().add(1, 'minutes').format('YYYY-MM-DD HH:mm:ss');
-    let gistStatusMap = {type: status, expireTime: expireTime};
-    chrome.storage.local.set({handleGistStatus: gistStatusMap});
+    let gistStatusMap = { type: status, expireTime: expireTime };
+    chrome.storage.local.set({ handleGistStatus: gistStatusMap });
 }
 
 // 判断是否中文
@@ -498,25 +574,29 @@ chrome.runtime.onMessage.addListener(function (req, sender, sendRes) {
             sendRes('ok'); // acknowledge
             break;
         case 'save-current': // 保存当前tab
-            chrome.storage.local.get(function (storage) {
-                let opts = storage.options
-                let openBackgroundAfterSendTab = "yes"
-                if (opts) {
-                    openBackgroundAfterSendTab = opts.openBackgroundAfterSendTab || "yes"
-                }
-                if (req.tabsArr.length > 0) {
-                    saveTabs(req.tabsArr);
-                    if (openBackgroundAfterSendTab === "yes") {
-                        openBackgroundPage();
+            pullFromGiteeGist().then((res) => {
+                chrome.storage.local.get(function (storage) {
+                    let opts = storage.options
+                    let openBackgroundAfterSendTab = "yes"
+                    if (opts) {
+                        openBackgroundAfterSendTab = opts.openBackgroundAfterSendTab || "yes"
                     }
-                    closeTabs(req.tabsArr);
-                } else {
-                    if (openBackgroundAfterSendTab === "yes") {
-                        openBackgroundPage();
+                    if (req.tabsArr.length > 0) {
+                        saveTabs(req.tabsArr);
+                        if (openBackgroundAfterSendTab === "yes") {
+                            openBackgroundPage();
+                        }
+                        pushToGiteeGist();
+                        closeTabs(req.tabsArr);
+                    } else {
+                        if (openBackgroundAfterSendTab === "yes") {
+                            openBackgroundPage();
+                        }
                     }
-                }
+                })
+                sendRes('ok'); // acknowledge
             })
-            sendRes('ok'); // acknowledge
+            
             break;
         case 'save-others': // 保存其他tab
             if (req.tabsArr.length > 0) {
@@ -536,8 +616,8 @@ chrome.runtime.onMessage.addListener(function (req, sender, sendRes) {
 
 // 向content-script主动发送消息
 function sendMessageToContentScript(action, message) {
-    chrome.tabs.query({active: true, currentWindow: true}, function (res) {
-        chrome.tabs.sendMessage(res[0].id, {action: action, message: message}, function (response) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (res) {
+        chrome.tabs.sendMessage(res[0].id, { action: action, message: message }, function (response) {
             if (response === 'ok') {
                 console.log("background-->content发送的消息被消费了");
             }
@@ -559,6 +639,7 @@ function saveTabs(tabsArr) {
     let tabGroup = makeTabGroup(tabsArr), cleanTabGroup = filterTabGroup(tabGroup);
 
     saveTabGroup(cleanTabGroup);
+
 }
 
 // from the array of Tab objects it makes an object with date and the array
@@ -568,7 +649,7 @@ function makeTabGroup(tabsArr) {
     let tabGroup = {
         date: date, id: genObjectId() // clever way to quickly get a unique ID
     };
-    let res = tabsArr.map(({title, url}) => ({title, url}));
+    let res = tabsArr.map(({ title, url }) => ({ title, url }));
     tabGroup.tabs = res;
     tabGroup.isLock = false;
     tabGroup.groupTitle = '';
@@ -610,38 +691,93 @@ function saveTabGroup(tabGroup) {
                     newArr.push(tabGroup);
                 }
                 saveShardings(newArr, "object");
+                console.log("🚀 ~ newArr:", newArr)
             }
         } else {
             saveShardings([tabGroup], "object");
         }
-        pushToGiteeGist();
+        // sleep(1000).then(() => {
+        //     return 
+        // })
+
     })
+}
+
+// 从gitee的gist拉取
+function pullFromGiteeGist() {
+    return new Promise((resolve) => {
+        console.log(`后台开始pull从gitee的gist fuckfuck`,);
+        startTime = moment();
+        setHandleGistStatus(`${chrome.i18n.getMessage("pullFromGiteeGistIng")}`);
+        // handleGistLog.length = 0;
+        usedSeconds = 0;
+        // handleGistLog.push(`${chrome.i18n.getMessage("start")}${moment().format('YYYY-MM-DD HH:mm:ss')}`);
+        // handleGistLog.push(`${chrome.i18n.getMessage("clickPullFromGiteeGist")}`)
+        // console.log(pullFromGiteeGistStatus);
+        // pullFromGiteeGistStatus = `${chrome.i18n.getMessage("startPullFromGiteeGistTask")}`;
+        console.log("开始pull从gitee的gist的任务");
+        // handleGistLog.push(`${chrome.i18n.getMessage("startPullFromGiteeGistTask")}`)
+        isStoredGiteeTokenLocal("pull_gitee").then((res) => {
+            resolve(res)
+        });
+
+        if (typeof (pullFromGiteeGistStatus) != "undefined") {
+            console.log("开始工作");
+            // intervalId = setInterval(function () {
+            //     if (typeof (pullFromGiteeGistStatus) != "undefined") {
+            //         console.log("秒等待");
+            //         usedSeconds++;
+            //     } else {
+            //         clearInterval(intervalId);
+            //         endTime = moment();
+            //         const duration = moment.duration(moment(endTime).diff(moment(startTime)));
+            //         // notificationId = genObjectId();
+            //         // chrome.notifications.create(notificationId, {
+            //         //     type: 'basic',
+            //         //     iconUrl: 'images/128.png',
+            //         //     title: `${chrome.i18n.getMessage("endPullFromGiteeGistTask")}`,
+            //         //     message: `${chrome.i18n.getMessage("usedTime")}${duration.hours()}${chrome.i18n.getMessage("hours")}${duration.minutes()}${chrome.i18n.getMessage("minutes")}${duration.seconds()}${chrome.i18n.getMessage("seconds")}`,
+            //         //     buttons: [{"title": `${chrome.i18n.getMessage("close")}`}],
+            //         //     requireInteraction: false
+            //         // });
+            //         // handleGistLog.push(`${usedSeconds}${chrome.i18n.getMessage("secondWait")}`)
+            //         // handleGistLog.push(`${chrome.i18n.getMessage("endPullFromGiteeGistTask")}`)
+            //         // handleGistLog.push(`${chrome.i18n.getMessage("end")}${moment().format('YYYY-MM-DD HH:mm:ss')}`);
+            //         setHandleGistStatus("IDLE");
+            //         // setHandleGistLog(`${chrome.i18n.getMessage("clickPullGitee")}`, false);
+            //         console.log("后台pull从gitee的gist的任务完成");
+            //         // showAllTabs();
+            //     }
+            // }, 1000);
+        }
+    })
+
 }
 
 // 打开background页
 function openBackgroundPage() {
     let pinnedTabsCount = 0
     // 查询当前窗口的所有标签页
-    chrome.tabs.query({currentWindow: true}, function (tabs) {
+    chrome.tabs.query({ currentWindow: true }, function (tabs) {
         // 统计固定标签的数量
         pinnedTabsCount = tabs.filter(tab => tab.pinned).length;
     });
-    chrome.tabs.query({url: "chrome-extension://*/workbench.html*", currentWindow: true}, function (tab) {
+    chrome.tabs.query({ url: "chrome-extension://*/workbench.html*", currentWindow: true }, function (tab) {
         if (tab.length >= 1) {
-            chrome.tabs.move(tab[0].id, {index: 0}, function callback() {
-                chrome.tabs.update(tab[0].id, {highlighted: true});
+            chrome.tabs.move(tab[0].id, { index: 0 }, function callback() {
+                chrome.tabs.update(tab[0].id, { highlighted: true });
             });
             chrome.tabs.reload(tab[0].id, {}, function (tab) {
             });
         } else {
-            chrome.tabs.create({index: 0, url: chrome.runtime.getURL('workbench.html')});
+            chrome.tabs.create({ index: 0, url: chrome.runtime.getURL('workbench.html') });
         }
     });
 }
 
 // 暗地里刷新background页
 function reloadBackgroundPage() {
-    chrome.tabs.query({url: "chrome-extension://*/workbench.html*", currentWindow: true}, function (tab) {
+    chrome.tabs.query({ url: "chrome-extension://*/workbench.html*", currentWindow: true }, function (tab) {
         if (tab.length >= 1) {
             chrome.tabs.reload(tab[0].id, {}, function (tab) {
             });
@@ -769,8 +905,8 @@ chrome.idle.onStateChanged.addListener(function (newState) {
     console.log(newState)
     if (newState === "active") {
         if (isLock) {
-            chrome.alarms.create("checkAutoSyncGitee", {delayInMinutes: 70, periodInMinutes: 70});
-            chrome.alarms.create("checkAutoSyncGithub", {delayInMinutes: 90, periodInMinutes: 90});
+            chrome.alarms.create("checkAutoSyncGitee", { delayInMinutes: 70, periodInMinutes: 70 });
+            chrome.alarms.create("checkAutoSyncGithub", { delayInMinutes: 90, periodInMinutes: 90 });
             isLock = false;
         }
     }
@@ -830,34 +966,37 @@ chrome.commands.onCommand.addListener(function (command) {
     }
     if (command === "toggle-feature-save-current") {
         console.log(`alt+q 触发`,);
-        chrome.storage.local.get(function (storage) {
-            chrome.tabs.query({
-                url: ["https://*/*", "http://*/*", "chrome://*/*", "file://*/*"], highlighted: true, currentWindow: true
-            }, function (tabs) {
-                var tabsArr = tabs.filter(function (tab) {
-                    return !tab.pinned;
-                });
-                let opts = storage.options
-                let openBackgroundAfterSendTab = "yes"
-                if (opts) {
-                    openBackgroundAfterSendTab = opts.openBackgroundAfterSendTab || "yes"
-                }
-                if (tabsArr.length > 0) {
-                    saveTabs(tabsArr);
-                    // if (openBackgroundAfterSendTab === "yes") {
-                    //     openBackgroundPage();
-                    // } else {
-                    //     reloadBackgroundPage()
-                    // }
-                    closeTabs(tabsArr);
-                } else {
-                    if (openBackgroundAfterSendTab === "yes") {
-                        openBackgroundPage();
-                    } else {
-                        reloadBackgroundPage()
+        pullFromGiteeGist().then(() => {
+            chrome.storage.local.get(function (storage) {
+                chrome.tabs.query({
+                    url: ["https://*/*", "http://*/*", "chrome://*/*", "file://*/*"], highlighted: true, currentWindow: true
+                }, function (tabs) {
+                    var tabsArr = tabs.filter(function (tab) {
+                        return !tab.pinned;
+                    });
+                    let opts = storage.options
+                    let openBackgroundAfterSendTab = "yes"
+                    if (opts) {
+                        openBackgroundAfterSendTab = opts.openBackgroundAfterSendTab || "yes"
                     }
-                }
-            });
+                    if (tabsArr.length > 0) {
+                        saveTabs(tabsArr);
+                        // if (openBackgroundAfterSendTab === "yes") {
+                        //     openBackgroundPage();
+                        // } else {
+                        //     reloadBackgroundPage()
+                        // }
+                        pushToGiteeGist();
+                        closeTabs(tabsArr);
+                    } else {
+                        if (openBackgroundAfterSendTab === "yes") {
+                            openBackgroundPage();
+                        } else {
+                            reloadBackgroundPage()
+                        }
+                    }
+                });
+            })
         })
     }
 
@@ -931,38 +1070,42 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
     console.log(info, tab);
     switch (info.menuItemId) {
         case "sendCurrentTab":
-            chrome.storage.local.get(function (storage) {
-                chrome.tabs.query({
-                    url: ["https://*/*", "http://*/*", "chrome://*/*", "file://*/*"],
-                    highlighted: true,
-                    currentWindow: true
-                }, function (tabs) {
-                    var tabsArr = tabs.filter(function (tab) {
-                        return !tab.pinned;
+            pullFromGiteeGist().then((res) => {
+                chrome.storage.local.get(function (storage) {
+                    chrome.tabs.query({
+                        url: ["https://*/*", "http://*/*", "chrome://*/*", "file://*/*"],
+                        highlighted: true,
+                        currentWindow: true
+                    }, function (tabs) {
+                        var tabsArr = tabs.filter(function (tab) {
+                            return !tab.pinned;
+                        });
+                        let opts = storage.options
+                        let openBackgroundAfterSendTab = "yes"
+                        if (opts) {
+                            openBackgroundAfterSendTab = opts.openBackgroundAfterSendTab || "yes"
+                        }
+                        if (tabsArr.length > 0) {
+                            saveTabs(tabsArr);
+                            // if (openBackgroundAfterSendTab === "yes") {
+                            //     openBackgroundPage();
+                            // } else {
+                            //     reloadBackgroundPage()
+                            // }
+                            pushToGiteeGist();
+                            closeTabs(tabsArr);
+                        } else {
+                            if (openBackgroundAfterSendTab === "yes") {
+                                openBackgroundPage();
+                            } else {
+                                reloadBackgroundPage()
+                            }
+                        }
+    
                     });
-                    let opts = storage.options
-                    let openBackgroundAfterSendTab = "yes"
-                    if (opts) {
-                        openBackgroundAfterSendTab = opts.openBackgroundAfterSendTab || "yes"
-                    }
-                    if (tabsArr.length > 0) {
-                        saveTabs(tabsArr);
-                        if (openBackgroundAfterSendTab === "yes") {
-                            openBackgroundPage();
-                        } else {
-                            reloadBackgroundPage()
-                        }
-                        closeTabs(tabsArr);
-                    } else {
-                        if (openBackgroundAfterSendTab === "yes") {
-                            openBackgroundPage();
-                        } else {
-                            reloadBackgroundPage()
-                        }
-                    }
-
                 });
-            });
+            })
+            
             break
         case 'showAllTabs':
             openBackgroundPage();
@@ -1220,5 +1363,5 @@ async function subtractAll() {
 // 设置定时器
 function setTimer(key, delay) {
     const nextAlarmTime = Date.now() + delay; // delay时间后触发，单位毫秒
-    chrome.alarms.create(key, {when: nextAlarmTime});
+    chrome.alarms.create(key, { when: nextAlarmTime });
 }
