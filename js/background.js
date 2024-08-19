@@ -138,10 +138,10 @@ function startPushToGithubGist() {
 
 // 开始推送gitee的gist
 function startPushToGiteeGist() {
-    console.log("开始推送gitee")
+    console.log("开始推送(同步)gitee")
     handleGiteeGistLog.length = 0;
-    handleGiteeGistLog.push(`${chrome.i18n.getMessage("start")}${moment().format('YYYY-MM-DD HH:mm:ss')}`);
-    handleGiteeGistLog.push(`${chrome.i18n.getMessage("autoPushToGiteeGist")}`)
+    handleGiteeGistLog.push(`(同步)${chrome.i18n.getMessage("start")}${moment().format('YYYY-MM-DD HH:mm:ss')}`);
+    handleGiteeGistLog.push(`(同步)${chrome.i18n.getMessage("autoPushToGiteeGist")}`)
     chrome.storage.local.get(null, function (storage) {
         console.log(storage.handleGistStatus);
         if (storage.handleGistStatus) {
@@ -195,7 +195,7 @@ function pushToGithubGist() {
 
 // 推送到gitee的gist
 function pushToGiteeGist() {
-    console.log("推送gitee")
+    console.log("后台推送gitee")
     setHandleGistStatus(`${chrome.i18n.getMessage("pushToGiteeGistIng")}`);
     usedSeconds = 0;
     pushToGiteeGistStatus = `${chrome.i18n.getMessage("startPushToGiteeGistTask")}`;
@@ -614,6 +614,7 @@ function saveTabGroup(tabGroup) {
         } else {
             saveShardings([tabGroup], "object");
         }
+        pushToGiteeGist();
     })
 }
 
@@ -828,6 +829,7 @@ chrome.commands.onCommand.addListener(function (command) {
         });
     }
     if (command === "toggle-feature-save-current") {
+        console.log(`alt+q 触发`,);
         chrome.storage.local.get(function (storage) {
             chrome.tabs.query({
                 url: ["https://*/*", "http://*/*", "chrome://*/*", "file://*/*"], highlighted: true, currentWindow: true
@@ -842,11 +844,11 @@ chrome.commands.onCommand.addListener(function (command) {
                 }
                 if (tabsArr.length > 0) {
                     saveTabs(tabsArr);
-                    if (openBackgroundAfterSendTab === "yes") {
-                        openBackgroundPage();
-                    } else {
-                        reloadBackgroundPage()
-                    }
+                    // if (openBackgroundAfterSendTab === "yes") {
+                    //     openBackgroundPage();
+                    // } else {
+                    //     reloadBackgroundPage()
+                    // }
                     closeTabs(tabsArr);
                 } else {
                     if (openBackgroundAfterSendTab === "yes") {

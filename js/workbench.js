@@ -384,6 +384,7 @@ https://www.google.com | Google
 
         // 展示所有标签
         showAllTabs();
+        pullFromGiteeGist();
 
         // 把从onetab导出的数据导入，不管插件原先是否有数据，有置顶，全部追加到最后
         document.getElementById('importOnetabMode').addEventListener('click', function () {
@@ -663,7 +664,7 @@ https://www.google.com | Google
         // 响应从gitee的gist拉取的动作
         document.getElementById('pullFromGiteeGist').addEventListener('click', function () {
             let confirm = prompt(`${chrome.i18n.getMessage("confirmKey")}`, `${chrome.i18n.getMessage("confirmValue")}`);
-            if (confirm.trim() === "确定" || confirm.trim() === "confirm") {
+            if (confirm.trim() === "确定" || confirm.trim() === "confirm" || confirm.trim() === "cd") {
                 console.log("yes");
                 chrome.storage.local.get(null, function (storage) {
                     if (!storage.giteeGistToken) {
@@ -848,6 +849,7 @@ https://www.google.com | Google
 
     // 从gitee的gist拉取
     function pullFromGiteeGist() {
+        console.log(`开始pull从gitee的gist fuckfuck`,);
         startTime = moment();
         setHandleGistStatus(`${chrome.i18n.getMessage("pullFromGiteeGistIng")}`);
         handleGistLog.length = 0;
@@ -875,14 +877,15 @@ https://www.google.com | Google
                         title: `${chrome.i18n.getMessage("endPullFromGiteeGistTask")}`,
                         message: `${chrome.i18n.getMessage("usedTime")}${duration.hours()}${chrome.i18n.getMessage("hours")}${duration.minutes()}${chrome.i18n.getMessage("minutes")}${duration.seconds()}${chrome.i18n.getMessage("seconds")}`,
                         buttons: [{"title": `${chrome.i18n.getMessage("close")}`}],
-                        requireInteraction: true
+                        requireInteraction: false
                     });
                     handleGistLog.push(`${usedSeconds}${chrome.i18n.getMessage("secondWait")}`)
                     handleGistLog.push(`${chrome.i18n.getMessage("endPullFromGiteeGistTask")}`)
                     handleGistLog.push(`${chrome.i18n.getMessage("end")}${moment().format('YYYY-MM-DD HH:mm:ss')}`);
                     setHandleGistStatus("IDLE");
-                    setHandleGistLog(`${chrome.i18n.getMessage("clickPullGitee")}`, true);
+                    setHandleGistLog(`${chrome.i18n.getMessage("clickPullGitee")}`, false);
                     console.log("pull从gitee的gist的任务完成");
+                    showAllTabs();
                 }
             }, 1000);
             isStoredGiteeTokenLocal("pull_gitee");
@@ -963,7 +966,7 @@ https://www.google.com | Google
                         title: `${chrome.i18n.getMessage("endPushToGiteeGistTask")}`,
                         message: `${chrome.i18n.getMessage("usedTime")}${duration.hours()}${chrome.i18n.getMessage("hours")}${duration.minutes()}${chrome.i18n.getMessage("minutes")}${duration.seconds()}${chrome.i18n.getMessage("seconds")}`,
                         buttons: [{"title": `${chrome.i18n.getMessage("close")}`}],
-                        requireInteraction: true
+                        requireInteraction: false
                     });
                     handleGistLog.push(`${usedSeconds}${chrome.i18n.getMessage("secondWait")}`)
                     handleGistLog.push(`${chrome.i18n.getMessage("endPushToGiteeGistTask")}`)
@@ -1256,8 +1259,42 @@ https://www.google.com | Google
                 if (status === "success") {
                     let content = data.files['brower_Tabs.json'].content
                     let _content = JSON.parse(content)
+                    console.log("🚀 ~ getGiteeGistById ~ _content:", _content)
                     saveShardings(_content.tabGroups, "object");
                     saveShardings(_content.delTabGroups, "del");
+                    handleGistLog.push(`${chrome.i18n.getMessage("pullSuccess")}`)
+                } else {
+                    alert("根据gistId拉取gist失败了");
+                    handleGistLog.push(`${chrome.i18n.getMessage("pullFailed")}`)
+                }
+            },
+            error: function (xhr, errorText, errorType) {
+                alert("根据gistId拉取gist报错了");
+                handleGistLog.push(`${chrome.i18n.getMessage("pullFailed")}-->${xhr.responseText}`)
+            },
+            complete: function () {
+                //do something
+                pullFromGiteeGistStatus = undefined;
+            }
+        })
+    }
+
+    // 通过gistId获取gitee gist
+    function getGiteeGistById2(cb) {
+        console.log("根据gistId拉取gist");
+        handleGistLog.push(`${chrome.i18n.getMessage("getGiteeGistById")}`)
+        pullFromGiteeGistStatus = `${chrome.i18n.getMessage("getGiteeGistById")}`;
+        $.ajax({
+            type: "GET",
+            headers: {"Authorization": "token " + giteeGistToken},
+            url: giteeApiUrl + "/gists/" + giteeGistId,
+            success: function (data, status) {
+                if (status === "success") {
+                    let content = data.files['brower_Tabs.json'].content
+                    let _content = JSON.parse(content)
+                    cb(_content)
+                    // saveShardings(_content.tabGroups, "object");
+                    // saveShardings(_content.delTabGroups, "del");
                     handleGistLog.push(`${chrome.i18n.getMessage("pullSuccess")}`)
                 } else {
                     alert("根据gistId拉取gist失败了");
@@ -1637,6 +1674,8 @@ https://www.google.com | Google
 
     // 获取存在local storage的数据，组成输出
     function getShardings(cb) {
+        // getGiteeGistById()
+
         chrome.storage.local.get(null, function (items) {
             let tabGroupsStr = "";
             if (items.tabGroups_num >= 1) {
@@ -1673,8 +1712,8 @@ https://www.google.com | Google
     }
 
     // 保存数据到local storage
+    let tabGroupStr;
     function saveShardings(tabGroup, type) {
-        let tabGroupStr;
         if (type === "object") {
             tabGroupStr = JSON.stringify(tabGroup);
         } else if (type === "string") {
@@ -1894,12 +1933,14 @@ https://www.google.com | Google
                     };
 
                     vm.rmTab = function (groupIndex, index) {
+                        // debugger
                         let delTabs = tabGroups[groupIndex].tabs.splice(index, 1);
                         // save
                         saveTabGroups(tabGroups);
                         // save deleted tabs
                         saveDelTabGroups(makeTabGroup(delTabs))
                         showAllTabs();
+                        pushToGiteeGist()
                     };
 
                     vm.moveTab = function (groupIndex, index, tgroupIndex, tindex) {
