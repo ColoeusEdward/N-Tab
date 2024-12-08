@@ -1000,7 +1000,7 @@ chrome.commands.onCommand.addListener(function (command) {
         })
     }
     if (command === "play_gcore") {
-        chrome.tabs.query({  active: true, }, 
+        chrome.tabs.query({  active: false, }, 
             (tabs) => { 
               // console.log('tabs',tabs) 
              let message = {    //这里的内容就是发送至content-script的内容   
