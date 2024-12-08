@@ -5,6 +5,22 @@ let scrollTop;
 let scrollLeft;
 let autoHideTimeout;
 
+const playsGcore = () => {
+    // let host = window.location.host
+    // if(host.includes('gcore')){ //
+
+    // }
+    var audio = document.querySelector('audio');
+    if (audio.paused) {
+        var loopState = true
+        document.querySelector('.gpf_controls_play.gpf_controls_circle').click()
+    } else {
+        var loopState = false
+        document.querySelector('.gpf_controls_play.gpf_controls_circle').click()
+    }
+
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // 鼠标划词（双击取词或者滑动取词）
     $(document).mouseup(function (e) {
@@ -74,7 +90,7 @@ function hidePopup() {
 
 // 主动发送消息给后台
 function sendMessageToBackground(action, message) {
-    chrome.runtime.sendMessage({action: action, message: message}, function (res) {
+    chrome.runtime.sendMessage({ action: action, message: message }, function (res) {
         if (res === 'ok') {
             console.log("content-->background发送的消息被消费了");
         }
@@ -83,12 +99,17 @@ function sendMessageToBackground(action, message) {
 
 // 持续监听发送给contentscript的消息
 chrome.runtime.onMessage.addListener(function (req, sender, sendRes) {
+    console.log(req)
     switch (req.action) {
         case 'translateResult':
             sendRes('ok'); // acknowledge
             if (req.message.trim().length > 0) {
                 tip(req.message);
             }
+            break;
+        case 'play':
+            playsGcore()
+            sendRes('play ok')
             break;
         default:
             sendRes('nope'); // acknowledge

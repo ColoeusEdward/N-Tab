@@ -596,7 +596,7 @@ chrome.runtime.onMessage.addListener(function (req, sender, sendRes) {
                 })
                 sendRes('ok'); // acknowledge
             })
-            
+
             break;
         case 'save-others': // 保存其他tab
             if (req.tabsArr.length > 0) {
@@ -999,6 +999,23 @@ chrome.commands.onCommand.addListener(function (command) {
             })
         })
     }
+    if (command === "play_gcore") {
+        chrome.tabs.query({  active: true, }, 
+            (tabs) => { 
+              // console.log('tabs',tabs) 
+             let message = {    //这里的内容就是发送至content-script的内容   
+             info: 'play',action:'play' }  
+             let tItem = tabs.find(item => item.url.includes('gcore'))
+             if(tItem){
+                chrome.tabs.sendMessage(tItem.id, { action: 'play', message: 'play' }, function (response) {
+                    if (response === 'ok') {
+                        console.log("background-->content发送的消息被消费了");
+                    }
+                });
+             }
+
+        })
+    }
 
 });
 
@@ -1101,11 +1118,11 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
                                 reloadBackgroundPage()
                             }
                         }
-    
+
                     });
                 });
             })
-            
+
             break
         case 'showAllTabs':
             openBackgroundPage();

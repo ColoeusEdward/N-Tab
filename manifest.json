@@ -25,7 +25,7 @@
         "<all_urls>"
     ],
     "content_security_policy": {
-      "sandbox": "sandbox allow-scripts; script-src 'self' https://api.github.com https://gitee.com https://hm.baidu.com 'unsafe-eval' https://hmcdn.baidu.com; object-src 'self'"
+        "sandbox": "sandbox allow-scripts; script-src 'self' https://api.github.com https://gitee.com https://hm.baidu.com 'unsafe-eval' https://hmcdn.baidu.com; object-src 'self'"
     },
     "action": {
         "default_icon": "images/96.png",
@@ -47,8 +47,7 @@
             "run_at": "document_start"
         }
     ],
-    "web_accessible_resources": [
-    ],
+    "web_accessible_resources": [],
     "homepage_url": "https://github.com/scoful/cloudSkyMonster",
     "default_locale": "zh_CN",
     "commands": {
@@ -63,6 +62,13 @@
             "suggested_key": {
                 "default": "Alt+Q",
                 "mac": "Alt+Q"
+            },
+            "description": "__MSG_toggleFeatureSaveCurrentTabs__"
+        },
+        "play_gcore": {
+            "suggested_key": {
+                "default": "Alt+B",
+                "mac": "Alt+B"
             },
             "description": "__MSG_toggleFeatureSaveCurrentTabs__"
         }
